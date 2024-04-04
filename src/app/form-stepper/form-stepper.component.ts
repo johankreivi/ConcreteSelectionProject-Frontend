@@ -1,156 +1,146 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { MatStepper } from '@angular/material/stepper';
+import { Component, OnInit } from '@angular/core';
 import { StepService } from '../step.service';
-import { MatStepperModule } from '@angular/material/stepper';
-import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
+import { NgForOf, NgIf, CommonModule } from '@angular/common';
 
-interface StepNode {
-  id?: string;
-  label?: string;
-  children?: StepNode[];
-  completed?: boolean;
-  choices?: (StepNode)[]
-}
-
-@Component({
-  selector: 'app-form-stepper',
-  templateUrl: './form-stepper.component.html',
-  styleUrl: './form-stepper.component.css',
-  standalone: true,
-  providers: [StepService],
-  imports: [MatStepperModule, CommonModule]
+@Component({selector: 'form-stepper',
+standalone: true,
+imports: [
+  CommonModule,
+  ReactiveFormsModule, 
+  MatStepperModule, 
+  MatButtonModule,
+  NgIf,
+  NgForOf,
+  // Any other components or directives used in your template
+],
+templateUrl: './form-stepper.component.html',
+styleUrls: ['./form-stepper.component.css'],
+providers: [StepService, FormBuilder]
 })
 export class FormStepperComponent implements OnInit {
-  @ViewChild('stepper') stepper: MatStepper;
+  currentData: string[] = [];
+  steps: any[] = [];
+  firstFormGroup!: FormGroup;
+  stepper!: MatStepper;
+  isLinear = false;
+  selectionPath: any[] = []; // Tracks the user's selections to determine the current step options
 
-  steps: StepNode[]; // Define a structured type for better type checking
-  jsonStructure: StepNode; // The JSON structure you'll receive for the stepper
-  currentPath: StepNode[] = []; // To maintain a history of choices
-  rootNode: StepNode = {}; // The root node of the JSON structure
-
-
-  constructor(private stepService: StepService) {
-    this.steps = [];
-    this.jsonStructure = {};
-    this.stepService = stepService;
-    this.stepper = {} as MatStepper;
-  }
+  constructor(private stepService: StepService, private _formBuilder: FormBuilder) {}
 
   ngOnInit() {
-    this.stepService.getSteps().subscribe({
-      next: (data: StepNode) => {
-        this.jsonStructure = data; // Assign the fetched data to your component's property
-        this.parseJsonToSteps(data); // Parse the fetched data into steps
-        console.log(this.steps); // Log the steps after they have been parsed
-      },
-      error: (error) => {
-        // Handle error scenario (for example, if the API call fails)
-        console.error("Failed to load steps", error);
+    this.stepService.getTreeData().subscribe(data => {
+      // Initialize the first step with level 1 objects as options
+      this.steps.push({
+        options: Object.keys(data).map(key => ({label: key, data: data[key]})),
+        selectedOption: null // Track the selected option for each step
+      });
+    });
+  }
+
+  goToStepByBreadcrumb(crumb: string) {
+    const crumbIndex = this.currentData.indexOf(crumb);
+    if (crumbIndex !== -1) {
+      this.currentData = this.currentData.slice(0, crumbIndex + 1);
+      this.generateStepsFromPath();
+
+      // Optional: Directly setting stepper's index might not always sync with dynamic step content
+      // this.stepper.selectedIndex = someIndexBasedOnCrumb; // Needs logic to determine correct index
+    }
+  }
+    
+
+    processData(data: any, parentKey: string | null = null) {
+      if (data === null) return;
+    
+      Object.keys(data).forEach(key => {
+        const step = {
+          label: key,
+          children: data[key] instanceof Array ? data[key] : []
+        };
+    
+        if (!parentKey) {
+          this.steps.push(step);
+        } else {
+          const parentStep = this.steps.find(s => s.label === parentKey);
+          if (parentStep) {
+            if (!Array.isArray(parentStep.children)) {
+              parentStep.children = []; // Ensure children is always an array
+            }
+            parentStep.children.push(step);
+          }
+        }
+    
+        this.processData(data[key], key);
+      });
+    }
+    
+    
+    
+
+    goToStep(choice: string) {
+      this.currentData.push(choice); // Append the new choice to the path
+      this.generateStepsFromPath(); // Re-generate steps based on the updated path
+  }
+
+  generateStepsFromPath() {
+    this.stepService.getTreeData().subscribe(data => {
+      let currentLevelData = data;
+      // Navigate through the data based on currentData to find the current level
+      for (const choice of this.currentData) {
+        if (currentLevelData && currentLevelData[choice] && currentLevelData[choice].children) {
+          currentLevelData = currentLevelData[choice].children;
+        } else {
+          currentLevelData = null;
+          break;
+        }
+      }
+
+      // Clear existing steps beyond the first one and repopulate based on currentLevelData
+      this.steps.length = 1; // Keep the first step always
+      if (currentLevelData) {
+        // Assuming currentLevelData is now at the correct level to generate next steps
+        const nextStepOptions = Object.keys(currentLevelData).map(key => ({
+          label: key,
+          data: currentLevelData[key]
+        }));
+
+        // If there are options for the next step, add them as a new step
+        if (nextStepOptions.length > 0) {
+          this.steps.push({
+            options: nextStepOptions,
+            selectedOption: null // No option selected yet for this new step
+          });
+        }
       }
     });
   }
 
-  parseJsonToSteps(node: StepNode, accumulatedLabels: string[] = []) {
-    console.log(node);
-  
-    const localAccumulatedLabels = [...accumulatedLabels];
-  
-    if (node.label) {
-      localAccumulatedLabels.push(node.label);
-    }
-  
-    // Determine the number of children
-    const childCount = node.children ? node.children.length : 0;
-  
-    if (childCount === 0) {
-      // Leaf node. Push the accumulated path as a step.
-      this.steps.push({
-        id: node.id,
-        label: localAccumulatedLabels.join(' > '),
-        completed: node.completed ?? false
-      });
-    } else if (childCount === 1) {
-      // Single child. Continue the path without creating a new step.
-      if (node.children) {
-        this.parseJsonToSteps(node.children[0], localAccumulatedLabels);
-      }
-    } else {
-      // Multiple children. This is a significant choice point.
-      // First, push the current path up to this point as a choice step.
-
-      this.steps.push({
-        id: node.id,
-        label: localAccumulatedLabels.join(' > '),
-        completed: node.completed ?? false,
-        choices: node.children?.map(child => {
-          return {
-            id: child.id,
-            label: child.label,
-            completed: child.completed ?? false,
-            children: child.children,
-            choices: child.choices
-          }
-        })
-      });
-  
-      // Then, process each child as a new path from this choice point.
-      node.children?.forEach(child => {
-        this.parseJsonToSteps(child, [localAccumulatedLabels[localAccumulatedLabels.length - 1]]);
-      });
-    }
-  }
-  
-  
-
-  goToStep(choice: StepNode) {
-    // Update the current path with the new choice
-    this.currentPath.push(choice);
-
-    // Regenerate steps based on the new path
-    this.generateStepsFromPath();
-  }
-
-  generateStepsFromPath() {
-    // Clear existing steps
-    this.steps = [];
-
-    // Start from the root or the last known point in the path
-    let currentNode = this.rootNode; // Assume rootNode is your JSON structure's root
-    for (const pathNode of this.currentPath) {
-      let found = currentNode.children?.find(child => child.id === pathNode.id);
-      if (found) {
-        currentNode = found;
-      } else {
-        console.error("Path not found"); // Handle errors appropriately
-        break;
-      }
-    }
-
-    // Now currentNode is the last node in the path
-    // Generate steps from here
-    this.parseJsonToSteps(currentNode);
-  }
 
   goBack() {
-    // Remove the last choice from the current path, if there is one
-    if (this.currentPath.length > 0) {
-      this.currentPath.pop();
+    if (this.currentData.length > 0) {
+        this.currentData.pop(); // Remove the last choice
+        this.generateStepsFromPath(); // Regenerate steps
     }
-  
-    // Regenerate steps based on the new (shortened) path
-    this.generateStepsFromPath();
   }
 
-  canGoBack() {
-    // Users can go back if there's more than one step in the path
-    return this.currentPath.length > 1;
-  }
+  selectOption(stepIndex: number, option: any) {
+    const currentStep = this.steps[stepIndex];
+    currentStep.selectedOption = option.label; // Update the selected option for the current step
+    this.currentData[stepIndex] = option.label; // Update the path with the selected option
 
-  nextStep() {
-    this.stepper.next();
-  }
+    // Trim any steps beyond the current one since a new selection has been made
+    this.steps = this.steps.slice(0, stepIndex + 1);
 
-  previousStep() {
-    this.stepper.previous();
+    // If the selected option has children, add a new step with these children as options
+    if (option.data && Object.keys(option.data).length) {
+      this.steps.push({
+        options: Object.keys(option.data).map(key => ({label: key, data: option.data[key]})),
+        selectedOption: null
+      });
+    }
   }
 }
+

@@ -1,0 +1,27 @@
+/* src/app/form-stepper/form-stepper.component.css */
+.container {
+    margin-left: 2em;
+}
+
+.selected {
+    background-color: #c0c9ff;
+    color: white;
+}
+
+.breadcrumbs {
+margin-bottom: 20px;
+margin-left: 5em;
+}
+.breadcrumbs a {
+color: #007bff;
+text-decoration: none;
+}
+.breadcrumbs a:hover {
+text-decoration: underline;
+}
+
+.nav-buttons {
+border: #007bff 1px solid;
+border-radius: 5px;
+padding: 10px;
+}

@@ -1,33 +1,31 @@
-<mat-vertical-stepper #stepper="matVerticalStepper" >
-    <mat-step *ngFor="let step of steps; index as i" [completed]="step.completed">
-      <ng-template *ngIf="i === 1" matStepLabel>{{step.label}}</ng-template>
+<div class="container">
+<!-- Breadcrumbs -->
+<div class="breadcrumbs">
+  <span *ngFor="let crumb of currentData; let isLast=last">
+    <a href="#" (click)="goToStepByBreadcrumb(crumb)">{{ crumb }}</a>
+    <span *ngIf="!isLast"> / </span>
+  </span>
+</div>
 
-      <!-- If the step has choices, render them as buttons -->
-      <ng-container *ngIf="step.choices">
-        <div *ngFor="let choice of step.choices" class="step-choice">
-          <!-- Ensure goToStep() is called with the full step node -->
-          <button mat-button (click)="goToStep(choice)">{{choice.label}}</button>
-        </div>
-      </ng-container>
+<!-- Stepper and Steps -->
+<mat-horizontal-stepper [linear]="isLinear" #stepper="matHorizontalStepper">
+  <mat-step *ngFor="let step of steps; let i = index">
+    <ng-template matStepLabel>Step {{i + 1}}</ng-template>
+    
+    <div *ngFor="let option of step.options">
+      <button mat-button
+              [class.selected]="option.label === step.selectedOption"
+              (click)="selectOption(i, option)">
+        {{option.label}}
+      </button>
+    </div>
 
-      <!-- If the step doesn't have choices, it's a continuation or end of a single-child path -->
-      <ng-container *ngIf="!step.choices">
-        <p>{{step.label}}</p>
-      </ng-container>
-
-      <div>
-        <!-- Add a back button to allow users to go back and make different choices -->
-        <button mat-button (click)="goBack()" *ngIf="canGoBack()">Back</button>
-        <!-- Dynamically show the Next button if there are further steps -->
-        <button mat-button matStepperNext *ngIf="!step.choices || step.completed">Next</button>
-      </div>
-    </mat-step>
-    <mat-step>
-        <ng-template matStepLabel>Done</ng-template>
-      <p>Done</p>
-      <div>
-        <button mat-button matStepperPrevious>Back</button>
-        <button mat-button (click)="stepper.reset()">Reset</button>
-      </div>
-    </mat-step>
-</mat-vertical-stepper>
+    <div style="margin-top: 2em;">
+      <span [ngClass]="{'nav-buttons': i > 0 || (i < steps.length - 1 && step.selectedOption)}">
+        <button mat-button (click)="stepper.previous()" *ngIf="i > 0">Back</button>
+        <button mat-button (click)="stepper.next()" *ngIf="i < steps.length - 1 && step.selectedOption">Next</button>
+      </span>
+    </div>
+  </mat-step>
+</mat-horizontal-stepper>
+</div>
