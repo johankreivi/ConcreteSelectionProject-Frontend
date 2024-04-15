@@ -8,6 +8,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production --base-href https://jolly-cliff-016211603.5.azurestaticapps.net/",
+    "test:headless": "ng test --watch=false --browsers=ChromeHeadless",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:ConcreteSelection-frontend": "node dist/concrete-selection-frontend/server/server.mjs"
