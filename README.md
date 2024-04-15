@@ -1,3 +1,16 @@
+Detta är en del av mitt examensarbete som skrevs vid TUC:s yrkeshögskola VT 2024
+Frontend: Angular
+Öppna i VS Code.
+Kör "npm install" i terminalen från basmappen.
+När alla paket är installerade, kör "npm start" eller "ng serve" (notera att Angular CLI måste vara installerat, se versioner nedan)
+
+Versioner:
+Angular CLI: 17.3.3
+Node: 20.9.0 (Installera förslagsvis nvm, node version manager för att kunna ha flera node-versioner samtidigt)
+Package Manager: npm 10.1.0
+
+---------------------------------------------------------------------------------------------------------------------------------
+
 # ConcreteSelectionFrontend
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.0.8.
